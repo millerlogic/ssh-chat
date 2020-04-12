@@ -3,9 +3,7 @@ package sshd
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"io"
-	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -32,9 +30,8 @@ func NewClientConfig(name string) *ssh.ClientConfig {
 	}
 }
 
-// ConnectShellEnv is the same as ConnectShell and includes environment variables.
-// env is a slice of name=value pairs.
-func ConnectShellEnv(host string, name string, env []string, handler func(r io.Reader, w io.WriteCloser) error) error {
+// connectShellEnv is the same as ConnectShell and includes environment variables.
+func connectShellEnv(host string, name string, env Env, handler func(r io.Reader, w io.WriteCloser) error) error {
 	config := NewClientConfig(name)
 	conn, err := ssh.Dial("tcp", host, config)
 	if err != nil {
@@ -50,13 +47,7 @@ func ConnectShellEnv(host string, name string, env []string, handler func(r io.R
 
 	if len(env) > 0 {
 		for _, e := range env {
-			ieq := strings.IndexByte(e, '=')
-			if ieq == -1 {
-				return errors.New("invalid environment")
-			}
-			name := e[:ieq]
-			value := e[ieq+1:]
-			err := session.Setenv(name, value)
+			err := session.Setenv(e.Key, e.Value)
 			if err != nil {
 				return err
 			}
@@ -95,5 +86,5 @@ func ConnectShellEnv(host string, name string, env []string, handler func(r io.R
 
 // ConnectShell makes a barebones SSH client session, used for testing.
 func ConnectShell(host string, name string, handler func(r io.Reader, w io.WriteCloser) error) error {
-	return ConnectShellEnv(host, name, nil, handler)
+	return connectShellEnv(host, name, nil, handler)
 }
